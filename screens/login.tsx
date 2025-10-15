@@ -13,6 +13,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { Login, ResendOtp, VerifyOtp } from './services/restApi';
+import WorldtekLogo from './WorldtekLogo';
 // import MenuTestScreen from './offline/models/menuTestScreen';
 
 type RootStackParamList = {
@@ -325,7 +326,7 @@ const LoginScreen = () => {
         </>
       )}
 
-      <Text style={styles.poweredBy}>Powered by WorldTech.in</Text>
+      <WorldtekLogo/>
       <View>
         {/* <MenuTestScreen/> */}
       </View>

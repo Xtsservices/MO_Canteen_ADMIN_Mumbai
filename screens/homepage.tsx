@@ -25,7 +25,7 @@ const HomePage = ({ navigation }: { navigation: NavigationProp<RootStackParamLis
                 style={styles.image}
                 resizeMode="contain"
             />
-            <Text style={{ color: '#fff', fontSize: 30, marginTop: 20 }}>Welfare Canteen</Text>
+            <Text style={{ color: '#fff', fontSize: 30, marginTop: 20 }}>MO Industrial Canteen</Text>
         </View>
     );
 };

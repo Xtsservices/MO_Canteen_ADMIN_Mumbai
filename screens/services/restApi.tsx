@@ -1,6 +1,6 @@
-const URL = "https://server.mocanteen.in/api"
+// const URL = "https://server.mocanteen.in/api"
 // https://server.mocanteen.in/api
-// const URL = 'http://localhost:3002/api';
+const URL = 'http://10.151.70.176:5241/api';
 
 export const Login = () => `${URL}/login`;
 export const VerifyOtp = () => `${URL}/verifyOtp`;
