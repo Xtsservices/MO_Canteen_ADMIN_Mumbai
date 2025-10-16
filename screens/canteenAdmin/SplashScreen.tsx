@@ -46,7 +46,7 @@ const SplashScreen: React.FC = () => {
         style={styles.image}
         resizeMode="contain"
       />
-      <Text style={styles.title}>Welfare Canteen</Text>
+      <Text style={styles.title}>MO Canteen</Text>
     </View>
   );
 };

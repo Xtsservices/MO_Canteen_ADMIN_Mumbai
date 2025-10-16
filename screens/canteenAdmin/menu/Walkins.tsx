@@ -351,7 +351,7 @@ const Walkins: React.FC = () => {
 
   // Print receipt (unchanged)
   const printReceipt = async (orderItems: FoodItem[], totalAmount: number) => {
-    const canteenName = (await AsyncStorage.getItem('canteenName')) || 'Welfare Canteen';
+    const canteenName = (await AsyncStorage.getItem('canteenName')) || 'MO Canteen';
     const currentDateTime = new Date().toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
