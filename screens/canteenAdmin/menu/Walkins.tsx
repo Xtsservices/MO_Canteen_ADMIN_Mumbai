@@ -428,7 +428,7 @@ const Walkins: React.FC = () => {
     </style>
   </head>
   <body>
-    <div class="header">Industrial NDY Canteen</div>
+    <div class="header">Industrial MO Canteen</div>
     <div class="subheader">CanteenName: ${canteenName}</div>
     <div class="datetime">${currentDateTime}</div>
 

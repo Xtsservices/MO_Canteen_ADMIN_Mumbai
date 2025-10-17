@@ -132,7 +132,7 @@ const VerifyTokenScreen = ({route}: Props) => {
     </style>
   </head>
   <body>
-    <div class="header">Industrial NDY Canteen</div>
+    <div class="header">Industrial MO Canteen</div>
     <div class="subheader">CanteenName: ${canteenName}</div>
     <div class="datetime">${currentDateTime}</div>
     <div class="section">
@@ -205,7 +205,7 @@ const VerifyTokenScreen = ({route}: Props) => {
         <ScrollView>
           <View style={styles.section}>
             <Text style={[styles.header, {textAlign: 'center', fontSize: 20}]}>
-              Industrial NDY Canteen
+              Industrial MO Canteen
             </Text>
             <Text
               style={[styles.label, {textAlign: 'center', marginBottom: 8}]}>

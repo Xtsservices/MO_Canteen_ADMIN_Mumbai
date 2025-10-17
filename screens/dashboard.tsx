@@ -215,7 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({navigation, route}) => {
               fontWeight: 'bold',
               textAlign: 'center',
             }}>
-            Industrial NDY
+            Industrial MO
           </Text>
         </View>
 
