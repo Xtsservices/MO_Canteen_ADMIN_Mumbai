@@ -71,6 +71,7 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
     await db.executeSql(`
       CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY,
+        orderNo TEXT NOT NULL,
         orderId INTEGER NOT NULL,
         userId INTEGER NOT NULL,
         totalAmount REAL NOT NULL,

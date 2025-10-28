@@ -225,7 +225,7 @@ return (
         ]}
         placeholder="Enter Order ID"
         placeholderTextColor="#999"
-        keyboardType="numeric"
+        keyboardType="text"
         onChangeText={setText}
         value={text}
       />
@@ -554,6 +554,9 @@ const handleGetAllOrders = async () => {
     const db = await getDatabase();
     const orders = data.data;
 
+    console.log(orders,"orders")
+   
+
     // Fetch all existing order ids from local DB
     const existingOrderIds: Set<number> = new Set();
     await new Promise<void>((resolve, reject) => {
@@ -582,11 +585,12 @@ const handleGetAllOrders = async () => {
           if (order.orderItems && order.orderItems.length > 0) {
             tx.executeSql(
               `INSERT INTO orders (
-                id, orderId, userId, totalAmount, status, canteenId, menuConfigurationId, createdById, updatedById, qrCode, createdAt, updatedAt
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                id, orderId,orderNo, userId, totalAmount, status, canteenId, menuConfigurationId, createdById, updatedById, qrCode, createdAt, updatedAt
+              ) VALUES (?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
                 order.id,
                 order.id,
+                order.orderNo,
                 order.userId,
                 order.totalAmount,
                 order.status,
@@ -653,13 +657,14 @@ const handleGetAllOrders = async () => {
 
 const handleVerifyOrderId = async () => {
   const db = await getDatabase();
+  const enterText = text?.toUpperCase() || ""
   db.transaction(tx => {
     tx.executeSql(
       `SELECT o.*, oi.* 
        FROM orders o
        INNER JOIN order_items oi ON o.id = oi.orderId
-       WHERE o.id = ?`,
-      [text],
+       WHERE o.orderNo = ?`,
+      [enterText],
       (_, resultSet) => {
         const ordersWithItems: Array<{[key: string]: any}> = Array.from(
           {length: resultSet.rows.length},

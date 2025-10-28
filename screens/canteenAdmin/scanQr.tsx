@@ -113,6 +113,7 @@ const BluetoothControlScreen = () => {
         console.log('Order ID:', orderId);
       } else {
         console.error('Invalid QR code format. Order ID not found.');
+        setIsScanning(false)
         Alert.alert('Error', 'Invalid QR code format. Order ID not found.');
         resetScanner();
         return;
@@ -160,12 +161,19 @@ const BluetoothControlScreen = () => {
             const orderData = resultSet.rows.item(0);
             console.log('Order Data===:', orderData);
             //this disable we can scan completed
+            if(!orderData){
+              Alert.alert('Error', 'This QR Code Not Found for Todays Order');
+            navigation.navigate("AdminDashboard")
+            }
             if (orderData.status === 'completed') {
               Alert.alert('Error', 'This order has already been completed.');
+            navigation.navigate("AdminDashboard")
               resetScanner();
               return;
             }
             setIsProcessing(false);
+            setIsScanning(false)
+
 
             // Navigate to the next page and pass the data
             navigation.navigate('VerifyToken', {
@@ -188,7 +196,7 @@ const BluetoothControlScreen = () => {
 
   const resetScanner = () => {
     setScannedData(null);
-    setIsScanning(true);
+    setIsScanning(false);
   };
 
   const handleShowQRPress = () => {

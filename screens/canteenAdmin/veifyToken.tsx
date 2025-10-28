@@ -209,7 +209,7 @@ const VerifyTokenScreen = ({route}: Props) => {
             </Text>
             <Text
               style={[styles.label, {textAlign: 'center', marginBottom: 8}]}>
-              Navel Dock Yard Canteens
+              MO Canteens
             </Text>
             <Text
               style={[styles.label, {textAlign: 'center', marginBottom: 16}]}>
