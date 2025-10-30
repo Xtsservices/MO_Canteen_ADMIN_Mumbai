@@ -863,7 +863,7 @@ const MenuScreenNew: React.FC = ({}) => {
     </style>
   </head>
   <body>
-    <div class="header">Industrial MO Canteen</div>
+    <div class="header">Industrial MO(MB) Canteen</div>
     <div class="subheader">CanteenName: ${canteenName}</div>
     <div class="datetime">${currentDateTime}</div>
 
