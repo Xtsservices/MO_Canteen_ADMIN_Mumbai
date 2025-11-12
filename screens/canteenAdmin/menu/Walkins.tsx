@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,12 +10,12 @@ import {
   ActivityIndicator,
   SafeAreaView,
   TextInput,
-} from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
-import SQLite from 'react-native-sqlite-storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import RNPrint from 'react-native-print';
-import { initializeDatabase } from '../../offline/database';
+} from "react-native";
+import NetInfo from "@react-native-community/netinfo";
+import SQLite from "react-native-sqlite-storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import RNPrint from "react-native-print";
+import { initializeDatabase } from "../../offline/database";
 
 // TypeScript interfaces (unchanged)
 interface Pricing {
@@ -76,7 +76,7 @@ interface LocalDbItem {
 const Walkins: React.FC = () => {
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [mobileNumber, setMobileNumber] = useState<string>('');
+  const [mobileNumber, setMobileNumber] = useState<string>("");
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [database, setDatabase] = useState<SQLite.SQLiteDatabase | null>(null);
 
@@ -84,9 +84,9 @@ const Walkins: React.FC = () => {
   useEffect(() => {
     initializeApp();
 
-    const unsubscribe = NetInfo.addEventListener(state => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
       setIsConnected(state.isConnected || false);
-      if (state.isConnected) {
+      if (state.isConnected && foodItems?.length === 0) {
         fetchItemsFromApi();
       }
     });
@@ -102,11 +102,11 @@ const Walkins: React.FC = () => {
 
       const netInfo = await NetInfo.fetch();
       setIsConnected(netInfo.isConnected || false);
-      if (netInfo.isConnected) {
+      if (netInfo.isConnected && foodItems?.length === 0) {
         await fetchItemsFromApi();
       }
     } catch (error) {
-      console.error('App initialization error:', error);
+      console.error("App initialization error:", error);
       setLoading(false);
     }
   };
@@ -114,7 +114,7 @@ const Walkins: React.FC = () => {
   // Load items from local database (unchanged)
   const loadItemsFromLocalDb = async (db: SQLite.SQLiteDatabase) => {
     try {
-      const results = await db.executeSql('SELECT * FROM menu_items');
+      const results = await db.executeSql("SELECT * FROM menu_items");
       const items: FoodItem[] = [];
 
       if (results[0].rows.length > 0) {
@@ -123,20 +123,20 @@ const Walkins: React.FC = () => {
           items.push({
             id: item.itemId,
             name: item.itemName,
-            description: '',
-            type: 'veg',
+            description: "",
+            type: "veg",
             price: item.price,
-            currency: 'INR',
-            image: '',
+            currency: "INR",
+            image: "",
             quantity: 0,
             availableQuantity: item.maxQuantity,
-            quantityUnit: 'pieces',
+            quantityUnit: "pieces",
           });
         }
         setFoodItems(items);
       }
     } catch (error) {
-      console.error('Error loading items from local DB:', error);
+      console.error("Error loading items from local DB:", error);
     } finally {
       setLoading(false);
     }
@@ -148,11 +148,13 @@ const Walkins: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('https://server.mocanteen.in/api/item/getItems');
+      const response = await fetch(
+        "https://server.mocanteen.in/api/item/getItems"
+      );
       const result: ApiResponse = await response.json();
 
       if (result.data && result.data.length > 0) {
-        await database.executeSql('DELETE FROM menu_items');
+        await database.executeSql("DELETE FROM menu_items");
 
         const itemsWithQuantity: FoodItem[] = [];
 
@@ -171,7 +173,7 @@ const Walkins: React.FC = () => {
             type: item.type,
             price: item.pricing.price,
             currency: item.pricing.currency,
-            image: item.image ? `data:image/jpeg;base64,${item.image}` : '',
+            image: item.image ? `data:image/jpeg;base64,${item.image}` : "",
             quantity: 0,
             availableQuantity: item.quantity,
             quantityUnit: item.quantityUnit,
@@ -179,11 +181,11 @@ const Walkins: React.FC = () => {
         }
 
         setFoodItems(itemsWithQuantity);
-        Alert.alert('Success', 'Menu items synced successfully!');
+        Alert.alert("Success", "Menu items synced successfully!");
       }
     } catch (error) {
-      console.error('Error fetching items from API:', error);
-      Alert.alert('Error', 'Failed to sync items from server.');
+      console.error("Error fetching items from API:", error);
+      Alert.alert("Error", "Failed to sync items from server.");
     } finally {
       setLoading(false);
     }
@@ -200,15 +202,25 @@ const Walkins: React.FC = () => {
       );
       return results[0].rows.item(0).count > 0;
     } catch (error) {
-      console.error('Error checking mobile number:', error);
+      console.error("Error checking mobile number:", error);
       return false;
     }
   };
 
   // Function to increase quantity (unchanged)
   const increaseQuantity = (id: number): void => {
-    setFoodItems(prevItems =>
-      prevItems.map(item =>
+    //if there is no mobileNumber entered with 10 digits, show alert
+    if (!mobileNumber.trim() || mobileNumber.length !== 10) {
+      Alert.alert(
+        "Error",
+        "Please enter a valid 10-digit mobile number before adding items."
+      );
+      return;
+    }
+
+    //before increasing. check mobile number avaible or not
+    setFoodItems((prevItems) =>
+      prevItems.map((item) =>
         item.id === id && item.quantity < item.availableQuantity
           ? { ...item, quantity: item.quantity + 1 }
           : item
@@ -218,8 +230,8 @@ const Walkins: React.FC = () => {
 
   // Function to decrease quantity (unchanged)
   const decreaseQuantity = (id: number): void => {
-    setFoodItems(prevItems =>
-      prevItems.map(item =>
+    setFoodItems((prevItems) =>
+      prevItems.map((item) =>
         item.id === id && item.quantity > 0
           ? { ...item, quantity: item.quantity - 1 }
           : item
@@ -230,48 +242,29 @@ const Walkins: React.FC = () => {
   // Filter items with quantity > 0 (modified to exclude image and match walkin_items schema)
   const filterOrderItems = (data: FoodItem[]) => {
     return data
-      .filter(item => item.quantity > 0)
-      .map(item => ({
+      .filter((item) => item.quantity > 0)
+      .map((item) => ({
         menuItemId: item.id,
         itemName: item.name,
         quantity: item.quantity,
         unitPrice: item.price,
         totalPrice: item.price * item.quantity,
-        specialInstructions: '', // Add logic if special instructions are needed
+        specialInstructions: "", // Add logic if special instructions are needed
         phoneNumber: mobileNumber,
       }));
   };
 
   // Function to print order (modified to use walkin_items table)
   const printOrder = async (): Promise<void> => {
-    // if (!database) {
-    //   Alert.alert('Error', 'Database not initialized.');
-    //   return;
-    // }
-
-    // if (!mobileNumber.trim()) {
-    //   Alert.alert('Error', 'Please enter mobile number.');
-    //   return;
-    // }
-
-    // if (mobileNumber.length !== 10 || isNaN(Number(mobileNumber))) {
-    //   Alert.alert('Error', 'Please enter a valid 10-digit mobile number.');
-    //   return;
-    // }
-
-    const orderItems = foodItems.filter(item => item.quantity > 0);
+    const orderItems = foodItems.filter((item) => item.quantity > 0);
 
     if (orderItems.length === 0) {
-      Alert.alert('No Items', 'Please add items to your order before printing.');
+      Alert.alert(
+        "No Items",
+        "Please add items to your order before printing."
+      );
       return;
     }
-
-    // Check if mobile number already exists
-    // const mobileExists = await checkMobileNumberExists(mobileNumber);
-    // if (mobileExists) {
-    //   Alert.alert('Error', 'This mobile number is already registered. Please use a different number.');
-    //   return;
-    // }
 
     const totalAmount = orderItems.reduce(
       (total, item) => total + item.price * item.quantity,
@@ -279,86 +272,120 @@ const Walkins: React.FC = () => {
     );
 
     try {
+      if (!database) {
+        Alert.alert("Error", "Database not initialized.");
+        return;
+      }
+
       // Use a transaction to ensure atomicity
-      // await database.transaction(async (tx) => {
-      //   const currentTime = Date.now();
+      database.transaction((tx) => {
+        const currentTime = Date.now();
+        // STEP 1 — Insert into walkins table
+        tx.executeSql(
+          `INSERT INTO walkins (
+      customerName, contactNumber, numberOfPeople, orderStatus,
+      totalAmount, finalAmount, createdById, createdAt, updatedAt,
+      paymentMethod, paymentStatus
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            "Walk-in Customer",
+            mobileNumber,
+            1,
+            "completed",
+            totalAmount,
+            totalAmount,
+            1,
+            currentTime,
+            currentTime,
+            "Cash",
+            "paid",
+          ],
+          (tx, walkinResult) => {
+            const walkinId = walkinResult.insertId;
+            console.log("✅ Walkin inserted, ID:", walkinId);
 
-      //   // Insert into walkins table
-      //   const [walkinResult] = await tx.executeSql(
-      //     `INSERT INTO walkins (
-      //       customerName, contactNumber, numberOfPeople, orderStatus,
-      //       totalAmount, finalAmount, createdById, createdAt, updatedAt,
-      //       paymentMethod, paymentStatus
-      //     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      //     [
-      //       'Walk-in Customer',
-      //       mobileNumber,
-      //       1,
-      //       'completed',
-      //       totalAmount,
-      //       totalAmount,
-      //       1,
-      //       currentTime,
-      //       currentTime,
-      //       'Cash',
-      //       'paid',
-      //     ]
-      //   );
+            // STEP 2 — Prepare items
+            const itemsToInsert = filterOrderItems(foodItems);
+            console.log("Inserting walkin items:", itemsToInsert);
 
-      //   const walkinId = walkinResult.insertId; // Get the inserted walkin ID
+            // STEP 3 — Insert walkin items
+            itemsToInsert.forEach((item) => {
+              tx.executeSql(
+                `INSERT INTO walkin_items (
+            walkinId, menuItemId, itemName, quantity, unitPrice,
+            totalPrice, specialInstructions, status, createdAt, phoneNumber
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                  walkinId,
+                  item.menuItemId,
+                  item.itemName,
+                  item.quantity,
+                  item.unitPrice,
+                  item.totalPrice,
+                  item.specialInstructions || "",
+                  "completed",
+                  currentTime,
+                  item.phoneNumber || "",
+                ],
+                (tx, result) => {
+                  console.log(
+                    `✅ Inserted item: ${item.itemName} (rowId: ${result.insertId})`
+                  );
+                },
+                (tx, error) => {
+                  console.error(`❌ Error inserting ${item.itemName}:`, error);
+                }
+              );
+            });
 
-      //   // Prepare order items for walkin_items table
-      //   const itemsToInsert = filterOrderItems(foodItems);
-
-      //   // Insert each item into walkin_items table
-      //   for (const item of itemsToInsert) {
-      //     await tx.executeSql(
-      //       `INSERT INTO walkin_items (
-      //         walkinId, menuItemId, itemName, quantity, unitPrice,
-      //         totalPrice, specialInstructions, status, createdAt, phoneNumber
-      //       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      //       [
-      //         walkinId,
-      //         item.menuItemId,
-      //         item.itemName,
-      //         item.quantity,
-      //         item.unitPrice,
-      //         item.totalPrice,
-      //         item.specialInstructions,
-      //         'completed',
-      //         currentTime,
-      //         item.phoneNumber,
-      //       ]
-      //     );
-      //   }
-      // });
+            // Optional: Verify items after all inserts
+            tx.executeSql(
+              "SELECT * FROM walkin_items WHERE walkinId = ?",
+              [walkinId],
+              (tx, res) => {
+                console.log("✅ Walkin items verified:", res.rows.raw());
+              },
+              (tx, error) =>
+                console.error("❌ Verification query failed:", error)
+            );
+          },
+          (tx, error) => {
+            console.error("❌ Error inserting walkin:", error);
+          }
+        );
+      });
 
       // Print receipt
+      setMobileNumber("")
       await printReceipt(orderItems, totalAmount);
 
       // Reset form
       // setMobileNumber('');
-      setFoodItems(prevItems =>
-        prevItems.map(item => ({ ...item, quantity: 0 }))
+      setFoodItems((prevItems) =>
+        prevItems.map((item) => ({ ...item, quantity: 0 }))
       );
 
-      Alert.alert('Success', 'Order processed and receipt printed successfully!');
+      Alert.alert(
+        "Success",
+        "Order processed and receipt printed successfully!"
+      );
     } catch (error) {
-      console.error('Error processing order:', error);
-      Alert.alert('Error', 'Failed to process order.');
+      console.error("Error processing order:", error);
+      Alert.alert("Error", "Failed to process order.");
     }
   };
 
   // Print receipt (unchanged)
   const printReceipt = async (orderItems: FoodItem[], totalAmount: number) => {
-    const canteenName = (await AsyncStorage.getItem('canteenName')) || 'MO(MB) Canteen';
-    const currentDateTime = new Date().toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
+    const canteenName =
+      (await AsyncStorage.getItem("canteenName")) || "MO(MB) Canteen";
+    const currentDateTime = new Date().toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
       hour12: true,
     });
 
@@ -445,13 +472,13 @@ const Walkins: React.FC = () => {
       </div>
       ${orderItems
         .map(
-          item => `
+          (item) => `
           <div class="row">
             <span class="label">${item.name}</span>
             <span class="value">${item.quantity}</span>
           </div>`
         )
-        .join('')}
+        .join("")}
       <div class="total-line"></div>
       <div class="total">
         <span>Total Amount</span>
@@ -464,21 +491,21 @@ const Walkins: React.FC = () => {
 
     try {
       await RNPrint.print({ html: printContent });
-      Alert.alert('Success', 'Receipt printed successfully!');
+      Alert.alert("Success", "Receipt printed successfully!");
     } catch (error) {
-      console.error('Print error:', error);
-      Alert.alert('Error', 'Failed to print the receipt.');
+      console.error("Print error:", error);
+      Alert.alert("Error", "Failed to print the receipt.");
     }
   };
 
   // Get type indicator color (unchanged)
   const getTypeColor = (type: string): string => {
-    return type === 'veg' ? '#4CAF50' : '#FF5722';
+    return type === "veg" ? "#4CAF50" : "#FF5722";
   };
 
   // Get type symbol (unchanged)
   const getTypeSymbol = (type: string): string => {
-    return type === 'veg' ? '●' : '▲';
+    return type === "veg" ? "●" : "▲";
   };
 
   // Render food item (unchanged)
@@ -493,7 +520,12 @@ const Walkins: React.FC = () => {
               <Text style={styles.placeholderText}>No Image</Text>
             </View>
           )}
-          <View style={[styles.typeIndicator, { backgroundColor: getTypeColor(item.type) }]}>
+          <View
+            style={[
+              styles.typeIndicator,
+              { backgroundColor: getTypeColor(item.type) },
+            ]}
+          >
             <Text style={styles.typeSymbol}>{getTypeSymbol(item.type)}</Text>
           </View>
         </View>
@@ -550,8 +582,8 @@ const Walkins: React.FC = () => {
       <Text style={styles.emptyTitle}>No Items Found</Text>
       <Text style={styles.emptySubtitle}>
         {isConnected
-          ? 'No menu items are available at the moment.'
-          : 'No offline data available. Please sync when connected to internet.'}
+          ? "No menu items are available at the moment."
+          : "No offline data available. Please sync when connected to internet."}
       </Text>
       {isConnected && (
         <TouchableOpacity style={styles.syncButton} onPress={fetchItemsFromApi}>
@@ -562,7 +594,10 @@ const Walkins: React.FC = () => {
   );
 
   // Calculate total items and amount (unchanged)
-  const totalItems = foodItems.reduce((total, item) => total + item.quantity, 0);
+  const totalItems = foodItems.reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
   const totalAmount = foodItems.reduce(
     (total, item) => total + item.price * item.quantity,
     0
@@ -583,18 +618,39 @@ const Walkins: React.FC = () => {
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>🍽️ Walk-in Orders</Text>
           {isConnected && (
-            <TouchableOpacity style={styles.syncButtonHeader} onPress={fetchItemsFromApi}>
+            <TouchableOpacity
+              style={styles.syncButtonHeader}
+              onPress={fetchItemsFromApi}
+            >
               <Text style={styles.syncButtonHeaderText}>🔄</Text>
             </TouchableOpacity>
           )}
         </View>
         <View style={styles.networkStatus}>
-          <Text style={[styles.networkText, { color: isConnected ? '#4CAF50' : '#FF5722' }]}>
-            {isConnected ? '🟢 Online' : '🔴 Offline'}
+          <Text
+            style={[
+              styles.networkText,
+              { color: isConnected ? "#4CAF50" : "#FF5722" },
+            ]}
+          >
+            {isConnected ? "🟢 Online" : "🔴 Offline"}
           </Text>
         </View>
       </View>
-{/* 
+
+      <View style={styles.mobileInputContainer}>
+        <Text style={styles.mobileLabel}>Customer Mobile Number</Text>
+        <TextInput
+          style={styles.mobileInput}
+          placeholder="Enter 10-digit mobile number"
+          value={mobileNumber}
+          onChangeText={setMobileNumber}
+          keyboardType="numeric"
+          maxLength={10}
+          placeholderTextColor="black"
+        />
+      </View>
+      {/* 
       <View style={styles.mobileInputContainer}>
         <Text style={styles.mobileLabel}>Customer Mobile Number</Text>
         <TextInput
@@ -613,7 +669,7 @@ const Walkins: React.FC = () => {
       ) : (
         <FlatList
           data={foodItems}
-          keyExtractor={item => item.id.toString()}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderFoodItem}
           showsVerticalScrollIndicator={false}
           style={styles.itemsList}
@@ -636,7 +692,9 @@ const Walkins: React.FC = () => {
 
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabel}>Total</Text>
-                <Text style={styles.summaryValue}>₹{totalAmount.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>
+                  ₹{totalAmount.toFixed(2)}
+                </Text>
               </View>
             </View>
 
@@ -654,61 +712,61 @@ const Walkins: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   header: {
-    backgroundColor: '#010080',
+    backgroundColor: "#010080",
     paddingVertical: 24,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
   },
   syncButtonHeader: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   syncButtonHeaderText: {
     fontSize: 18,
   },
   networkStatus: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   networkText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   mobileInputContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     margin: 16,
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -716,17 +774,17 @@ const styles = StyleSheet.create({
   },
   mobileLabel: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 8,
   },
   mobileInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
   },
   itemsList: {
     flex: 1,
@@ -739,12 +797,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   itemCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -754,91 +812,91 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   imageContainer: {
-    position: 'relative',
+    position: "relative",
     marginRight: 16,
   },
   itemImage: {
     width: 80,
     height: 80,
     borderRadius: 12,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
   },
   placeholderImage: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#e0e0e0',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#e0e0e0",
   },
   placeholderText: {
     fontSize: 10,
-    color: '#999',
-    textAlign: 'center',
+    color: "#999",
+    textAlign: "center",
   },
   typeIndicator: {
-    position: 'absolute',
+    position: "absolute",
     top: -4,
     right: -4,
     width: 20,
     height: 20,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
   typeSymbol: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 8,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   itemDetails: {
     flex: 1,
   },
   itemName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 4,
   },
   itemDescription: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 8,
     lineHeight: 18,
   },
   priceContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   itemPrice: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#010080',
+    fontWeight: "bold",
+    color: "#010080",
   },
   availableQuantity: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
   },
   quantityContainer: {
     marginLeft: 12,
   },
   addButton: {
-    backgroundColor: '#010080',
+    backgroundColor: "#010080",
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
     minWidth: 80,
-    alignItems: 'center',
+    alignItems: "center",
   },
   addButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
     borderRadius: 20,
     padding: 4,
   },
@@ -846,33 +904,33 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#010080',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#010080",
+    justifyContent: "center",
+    alignItems: "center",
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   quantityDisplay: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginHorizontal: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
     minWidth: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   quantityText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 40,
   },
   emptyIcon: {
@@ -881,24 +939,24 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginBottom: 32,
     lineHeight: 22,
   },
   syncButton: {
-    backgroundColor: '#010080',
+    backgroundColor: "#010080",
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 25,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -908,16 +966,16 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   syncButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   orderSummary: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#010080',
+    backgroundColor: "#010080",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -925,42 +983,42 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
   },
   summaryItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#fff',
+    color: "#fff",
     opacity: 0.8,
     marginBottom: 4,
   },
   summaryValue: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
   },
   summaryDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     opacity: 0.3,
     marginHorizontal: 20,
   },
   printButton: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   printButtonText: {
-    color: '#010080',
+    color: "#010080",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
 
