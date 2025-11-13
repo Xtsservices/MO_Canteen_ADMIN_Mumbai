@@ -76,7 +76,7 @@ interface LocalDbItem {
 const Walkins: React.FC = () => {
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [mobileNumber, setMobileNumber] = useState<string>("");
+  const [mobileNumber, setMobileNumber] = useState<string>("9999999999");
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [database, setDatabase] = useState<SQLite.SQLiteDatabase | null>(null);
 
@@ -638,18 +638,7 @@ const Walkins: React.FC = () => {
         </View>
       </View>
 
-      <View style={styles.mobileInputContainer}>
-        <Text style={styles.mobileLabel}>Customer Mobile Number</Text>
-        <TextInput
-          style={styles.mobileInput}
-          placeholder="Enter 10-digit mobile number"
-          value={mobileNumber}
-          onChangeText={setMobileNumber}
-          keyboardType="numeric"
-          maxLength={10}
-          placeholderTextColor="black"
-        />
-      </View>
+      
       {/* 
       <View style={styles.mobileInputContainer}>
         <Text style={styles.mobileLabel}>Customer Mobile Number</Text>
