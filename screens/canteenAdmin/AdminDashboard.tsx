@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useNavigation } from "@react-navigation/native";
+import React, { useState, useEffect,useCallback } from "react";
+import { useNavigation,useFocusEffect } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDatabase } from "../offline/database";
@@ -838,33 +838,16 @@ const AdminDashboard: React.FC = () => {
     setRefreshing(false);
   };
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", async () => {
-      const canteenName = await AsyncStorage.getItem("canteenName");
-      setCanteenName(canteenName || "Canteen Name");
-      await refreshLocalSummary();
-      await handleWalkinSync();
-    });
 
-    // Initial load as well
-    (async () => {
-      const canteenName = await AsyncStorage.getItem("canteenName");
-      setCanteenName(canteenName || "Canteen Name");
-      await refreshLocalSummary();
-      await handleWalkinSync();
-    })();
 
-    return unsubscribe;
-  }, [navigation]);
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1a237e" />
-        <Text style={{ marginTop: 10, fontSize: 16 }}>Loading...</Text>
-      </View>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <View style={styles.loadingContainer}>
+  //       <ActivityIndicator size="large" color="#1a237e" />
+  //       <Text style={{ marginTop: 10, fontSize: 16 }}>Loading...</Text>
+  //     </View>
+  //   );
+  // }
 
 
 const handleWalkinSync = async () => {
@@ -1038,6 +1021,40 @@ const handleWalkinSync = async () => {
     console.error("❌ handleWalkinSync failed:", error);
   }
 };
+
+
+
+useFocusEffect(
+  useCallback(() => {
+    let isActive = true;
+
+    const loadData = async () => {
+      // 1️⃣ Check Internet
+      const net = await NetInfo.fetch();
+
+      // 2️⃣ Always load the local canteen name
+      const canteenName = await AsyncStorage.getItem("canteenName");
+      if (isActive) setCanteenName(canteenName || "Canteen Name");
+
+      // 3️⃣ Internet Available → Call API Sync
+      if (net.isConnected) {
+        if (isActive) {
+          await refreshLocalSummary();
+          await handleWalkinSync();
+        }
+      } else {
+        console.log("No internet — skipping API sync");
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isActive = false;
+    };
+  }, [])
+);
+
 
 
 
