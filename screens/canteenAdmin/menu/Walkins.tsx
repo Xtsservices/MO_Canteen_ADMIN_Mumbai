@@ -48,6 +48,7 @@ interface ApiItem {
 
 interface FoodItem {
   id: number;
+  menuConfigurationId: number;
   name: string;
   description: string;
   type: string;
@@ -116,18 +117,21 @@ const Walkins: React.FC = () => {
     try {
       const results = await db.executeSql("SELECT * FROM menu_items");
       const items: FoodItem[] = [];
+      console.log("Loaded items from local DB:", results);
 
       if (results[0].rows.length > 0) {
         for (let i = 0; i < results[0].rows.length; i++) {
           const item = results[0].rows.item(i);
+          console.log("Processing local DB item:", item);
           items.push({
             id: item.itemId,
+            menuConfigurationId: item.menuConfigurationId,
             name: item.itemName,
             description: "",
             type: "veg",
             price: item.price,
             currency: "INR",
-            image: "",
+            image: item.image || "",
             quantity: 0,
             availableQuantity: item.maxQuantity,
             quantityUnit: "pieces",
@@ -142,49 +146,84 @@ const Walkins: React.FC = () => {
     }
   };
 
-  // Fetch items from API and save to local database (unchanged)
   const fetchItemsFromApi = async (): Promise<void> => {
     if (!database) return;
 
     try {
       setLoading(true);
+
       const response = await fetch(
-        "https://server.mocanteen.in/api/item/getItems"
+        "https://server.mocanteen.in/api/adminDasboard/getTotalMenus?canteenId=1"
       );
-      const result: ApiResponse = await response.json();
+      const result = await response.json();
+
+      console.log("API fetch result:", result);
 
       if (result.data && result.data.length > 0) {
         await database.executeSql("DELETE FROM menu_items");
 
         const itemsWithQuantity: FoodItem[] = [];
 
-        for (const item of result.data) {
-          await database.executeSql(
-            `INSERT OR REPLACE INTO menu_items (
-              id, itemId, itemName, minQuantity, maxQuantity, price
-            ) VALUES (?, ?, ?, ?, ?, ?)`,
-            [null, item.id, item.name, 1, item.quantity, item.pricing.price]
-          );
+        for (const category of result.data) {
+          const menuItems = category.menuItems || [];
+          console.log("Processing category:", category);
 
-          itemsWithQuantity.push({
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            type: item.type,
-            price: item.pricing.price,
-            currency: item.pricing.currency,
-            image: item.image ? `data:image/jpeg;base64,${item.image}` : "",
-            quantity: 0,
-            availableQuantity: item.quantity,
-            quantityUnit: item.quantityUnit,
-          });
+          const menuConfigurationId = category.menuMenuConfiguration
+            ? category.menuMenuConfiguration.id
+            : null;
+
+          for (const menuItem of menuItems) {
+            const item = menuItem.menuItemItem;
+            if (!item) continue;
+
+            console.log("Processing item:", item);
+
+            const { id: itemId, name, description, image, pricing } = item;
+
+            const minQuantity = menuItem.minQuantity ?? 1;
+            const maxQuantity = menuItem.maxQuantity ?? 10;
+
+            console.log("menuConfigurationId", menuConfigurationId);
+
+            // Insert into SQLite
+            await database.executeSql(
+              `INSERT OR REPLACE INTO menu_items (
+              menuConfigurationId, itemId, itemName, minQuantity, maxQuantity, price
+            ) VALUES (?,?,?,?,?,?)`,
+              [
+                parseInt(menuConfigurationId),
+                itemId,
+                name,
+                minQuantity,
+                maxQuantity,
+                pricing?.price ?? 0,
+              ]
+            );
+
+            // Push to state list
+            itemsWithQuantity.push({
+              id: itemId,
+              name,
+              menuConfigurationId,
+              description,
+              type: category.name,
+              price: pricing?.price ?? 0,
+              currency: pricing?.currency ?? "INR",
+              image: image || "",
+              quantity: 0,
+              availableQuantity: maxQuantity,
+              quantityUnit: "NOS",
+            });
+          }
         }
+
+        console.log("itemsWithQuantity", itemsWithQuantity);
 
         setFoodItems(itemsWithQuantity);
         Alert.alert("Success", "Menu items synced successfully!");
       }
     } catch (error) {
-      console.error("Error fetching items from API:", error);
+      console.error("Error fetching items:", error);
       Alert.alert("Error", "Failed to sync items from server.");
     } finally {
       setLoading(false);
@@ -207,32 +246,57 @@ const Walkins: React.FC = () => {
     }
   };
 
-  // Function to increase quantity (unchanged)
-  const increaseQuantity = (id: number): void => {
-    //if there is no mobileNumber entered with 10 digits, show alert
-    if (!mobileNumber.trim() || mobileNumber.length !== 10) {
+  // Change the functions to accept a composite key
+const increaseQuantity = (id: number, configId: number): void => {
+  // 1. Mobile number validation
+  if (!mobileNumber.trim() || mobileNumber.length !== 10) {
+    Alert.alert("Error", "Please enter a valid 10-digit mobile number before adding items.");
+    return;
+  }
+
+  // 2. Check if cart is empty → allow any menu
+  const hasItemsInCart = foodItems.some(item => item.quantity > 0);
+
+  if (hasItemsInCart) {
+    // Find which menu is already in the cart
+    const existingConfigId = foodItems.find(item => item.quantity > 0)?.menuConfigurationId;
+
+    // If trying to add from a different menu → BLOCK
+    if (existingConfigId !== undefined && existingConfigId !== configId) {
+      const menuNames: Record<number, string> = {
+        1: "Breakfast",
+        2: "Lunch",
+        3: "Snacks",
+      };
+
       Alert.alert(
-        "Error",
-        "Please enter a valid 10-digit mobile number before adding items."
+        "Cannot Mix Menus",
+        `You already have ${menuNames[existingConfigId]} items in your order.\n\n` +
+        `Please complete or clear the current order before adding items from ${menuNames[configId]}.`,
+        [{ text: "OK" }]
       );
       return;
     }
+  }
 
-    //before increasing. check mobile number avaible or not
-    setFoodItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id && item.quantity < item.availableQuantity
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      )
-    );
-  };
+  // 3. All good → increase quantity
+  setFoodItems((prevItems) =>
+    prevItems.map((item) =>
+      item.id === id && 
+      item.menuConfigurationId === configId && 
+      item.quantity < item.availableQuantity
+        ? { ...item, quantity: item.quantity + 1 }
+        : item
+    )
+  );
+};
 
-  // Function to decrease quantity (unchanged)
-  const decreaseQuantity = (id: number): void => {
-    setFoodItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id && item.quantity > 0
+  const decreaseQuantity = (id: number, configId: number): void => {
+    setFoodItems((prev) =>
+      prev.map((item) =>
+        item.id === id &&
+        item.menuConfigurationId === configId &&
+        item.quantity > 0
           ? { ...item, quantity: item.quantity - 1 }
           : item
       )
@@ -245,6 +309,7 @@ const Walkins: React.FC = () => {
       .filter((item) => item.quantity > 0)
       .map((item) => ({
         menuItemId: item.id,
+        menuConfigurationId: item.menuConfigurationId,
         itemName: item.name,
         quantity: item.quantity,
         unitPrice: item.price,
@@ -312,11 +377,12 @@ const Walkins: React.FC = () => {
             itemsToInsert.forEach((item) => {
               tx.executeSql(
                 `INSERT INTO walkin_items (
-            walkinId, menuItemId, itemName, quantity, unitPrice,
+            walkinId,menuConfigurationId, menuItemId, itemName, quantity, unitPrice,
             totalPrice, specialInstructions, status, createdAt, phoneNumber
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                   walkinId,
+                  item.menuConfigurationId,
                   item.menuItemId,
                   item.itemName,
                   item.quantity,
@@ -356,7 +422,7 @@ const Walkins: React.FC = () => {
       });
 
       // Print receipt
-      setMobileNumber("")
+      setMobileNumber("");
       await printReceipt(orderItems, totalAmount);
 
       // Reset form
@@ -535,9 +601,6 @@ const Walkins: React.FC = () => {
           <Text style={styles.itemDescription}>{item.description}</Text>
           <View style={styles.priceContainer}>
             <Text style={styles.itemPrice}>₹{item.price}</Text>
-            <Text style={styles.availableQuantity}>
-              Available: {item.availableQuantity} {item.quantityUnit}
-            </Text>
           </View>
         </View>
 
@@ -545,7 +608,9 @@ const Walkins: React.FC = () => {
           {item.quantity === 0 ? (
             <TouchableOpacity
               style={styles.addButton}
-              onPress={() => increaseQuantity(item.id)}
+              onPress={() =>
+                increaseQuantity(item.id, item.menuConfigurationId)
+              }
             >
               <Text style={styles.addButtonText}>ADD</Text>
             </TouchableOpacity>
@@ -553,7 +618,9 @@ const Walkins: React.FC = () => {
             <View style={styles.quantityControls}>
               <TouchableOpacity
                 style={styles.quantityButton}
-                onPress={() => decreaseQuantity(item.id)}
+                onPress={() =>
+                  decreaseQuantity(item.id, item.menuConfigurationId)
+                }
               >
                 <Text style={styles.buttonText}>-</Text>
               </TouchableOpacity>
@@ -564,7 +631,9 @@ const Walkins: React.FC = () => {
 
               <TouchableOpacity
                 style={styles.quantityButton}
-                onPress={() => increaseQuantity(item.id)}
+                onPress={() =>
+                  increaseQuantity(item.id, item.menuConfigurationId)
+                }
               >
                 <Text style={styles.buttonText}>+</Text>
               </TouchableOpacity>
@@ -612,6 +681,8 @@ const Walkins: React.FC = () => {
     );
   }
 
+  console.log("Rendering Walkins with items:", foodItems);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -638,7 +709,6 @@ const Walkins: React.FC = () => {
         </View>
       </View>
 
-      
       {/* 
       <View style={styles.mobileInputContainer}>
         <Text style={styles.mobileLabel}>Customer Mobile Number</Text>
@@ -658,8 +728,49 @@ const Walkins: React.FC = () => {
       ) : (
         <FlatList
           data={foodItems}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderFoodItem}
+          keyExtractor={(item) => `${item.id}-${item.menuConfigurationId}`}
+          renderItem={({ item, index }) => {
+            // === SORTED LOGIC: We assume foodItems is sorted by menuConfigurationId 1,2,3 ===
+            // We'll sort it right here if not already sorted (safe & simple)
+
+            const currentConfigId = item.menuConfigurationId;
+            const prevItem = foodItems[index - 1];
+
+            // Check if this is the first item of its group
+            const isFirstInSection =
+              index === 0 ||
+              (prevItem && prevItem.menuConfigurationId !== currentConfigId);
+
+            const sectionTitle =
+              currentConfigId === 1
+                ? "Breakfast"
+                : currentConfigId === 2
+                ? "Lunch"
+                : currentConfigId === 3
+                ? "Snacks"
+                : "Other Menu";
+
+            return (
+              <View>
+                {isFirstInSection && (
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionHeaderText}>
+                      {currentConfigId === 1 && "Breakfast"}
+                      {currentConfigId === 2 && "Lunch"}
+                      {currentConfigId === 3 && "Snacks"}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Your existing food card */}
+                {renderFoodItem({ item })}
+              </View>
+            );
+          }}
+          // === THIS IS THE KEY: Sort the data before rendering ===
+          data={foodItems.sort(
+            (a, b) => a.menuConfigurationId - b.menuConfigurationId
+          )}
           showsVerticalScrollIndicator={false}
           style={styles.itemsList}
           contentContainerStyle={styles.listContainer}
@@ -702,6 +813,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f9fa",
+  },
+  sectionHeader: {
+    backgroundColor: "#f0f0f0",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+  },
+  sectionHeaderText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#010080",
+    letterSpacing: 0.5,
   },
   loadingContainer: {
     flex: 1,

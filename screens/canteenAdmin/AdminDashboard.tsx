@@ -898,7 +898,7 @@ const handleWalkinSync = async () => {
                     finalAmount: walkin.finalAmount,
                     paymentMethod: walkin.paymentMethod,
                     notes: walkin.notes || "",
-                    menuConfigurationId: walkin.menuId,
+                    menuConfigurationId: relatedItems[0]?.menuConfigurationId,
                     orderItems: relatedItems.map((item) => ({
                       menuItemId: item.menuItemId.toString(),
                       quantity: item.quantity,

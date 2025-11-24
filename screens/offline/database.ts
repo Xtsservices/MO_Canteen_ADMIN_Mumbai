@@ -60,7 +60,8 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       id INTEGER PRIMARY KEY,
          menuId INTEGER,
               itemId INTEGER,
-              itemName TEXT UNIQUE,
+              menuConfigurationId INTEGER,
+              itemName TEXT NOT NULL,
               minQuantity INTEGER,
               maxQuantity INTEGER,
               price REAL
@@ -135,6 +136,7 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       walkinId INTEGER NOT NULL,
       menuItemId INTEGER NOT NULL,
+      menuConfigurationId INTEGER NOT NULL,
       itemName TEXT NOT NULL,
       quantity INTEGER NOT NULL,
       unitPrice REAL NOT NULL,
@@ -156,7 +158,7 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
 
 export const getDatabase = async () => {
   if (!database) {
-    database = await initializeDatabase();
+    // database = await initializeDatabase();
   }
 
   return database;
@@ -199,3 +201,4 @@ const dropAllTables = async (db: SQLite.SQLiteDatabase) => {
     throw error;
   }
 };
+
