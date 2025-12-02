@@ -197,6 +197,7 @@ const BluetoothControlScreen = () => {
   const resetScanner = () => {
     setScannedData(null);
     setIsScanning(false);
+    setIsScanning(true);
   };
 
   const handleShowQRPress = () => {
@@ -296,15 +297,11 @@ const BluetoothControlScreen = () => {
                 onPress={handleShowQRPress}
                 style={styles.button}>
                 <Text style={styles.buttonText}>
-                  {isScanning ? 'Show QR Code' : 'Scan Again'}
+                  Scan Again
                 </Text>
               </TouchableOpacity>
             </>
           )}
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>proposed by</Text>
         </View>
       </View>
     </View>

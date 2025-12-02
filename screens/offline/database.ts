@@ -158,7 +158,7 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
 
 export const getDatabase = async () => {
   if (!database) {
-    // database = await initializeDatabase();
+    database = await initializeDatabase();
   }
 
   return database;

@@ -80,6 +80,8 @@ const Walkins: React.FC = () => {
   const [mobileNumber, setMobileNumber] = useState<string>("9999999999");
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [database, setDatabase] = useState<SQLite.SQLiteDatabase | null>(null);
+  // paymentMethod: make empty default so selection is mandatory
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
 
   // Initialize database and check network (unchanged)
   useEffect(() => {
@@ -153,7 +155,7 @@ const Walkins: React.FC = () => {
       setLoading(true);
 
       const response = await fetch(
-        "https://server.mocanteen.in/api/adminDasboard/getTotalMenus?canteenId=1"
+        "https://server.mocanteen.in/api/adminDasboard/getTotalMenusWithTimeLimit?canteenId=1"
       );
       const result = await response.json();
 
@@ -221,6 +223,8 @@ const Walkins: React.FC = () => {
 
         setFoodItems(itemsWithQuantity);
         Alert.alert("Success", "Menu items synced successfully!");
+      }else{
+        setFoodItems([]);
       }
     } catch (error) {
       console.error("Error fetching items:", error);
@@ -331,6 +335,14 @@ const increaseQuantity = (id: number, configId: number): void => {
       return;
     }
 
+    // Require payment method selection
+    if (!paymentMethod) {
+      Alert.alert("Payment Required", "Please select a payment method before printing (Cash or WalkinQrPay).", [
+        { text: "OK" }
+      ]);
+      return;
+    }
+
     const totalAmount = orderItems.reduce(
       (total, item) => total + item.price * item.quantity,
       0
@@ -346,11 +358,11 @@ const increaseQuantity = (id: number, configId: number): void => {
       database.transaction((tx) => {
         const currentTime = Date.now();
         // STEP 1 — Insert into walkins table
-        tx.executeSql(
+      tx.executeSql(
           `INSERT INTO walkins (
       customerName, contactNumber, numberOfPeople, orderStatus,
-      totalAmount, finalAmount, createdById, createdAt, updatedAt,
-      paymentMethod, paymentStatus
+    totalAmount, finalAmount, createdById, createdAt, updatedAt,
+    paymentMethod, paymentStatus
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             "Walk-in Customer",
@@ -362,7 +374,7 @@ const increaseQuantity = (id: number, configId: number): void => {
             1,
             currentTime,
             currentTime,
-            "Cash",
+            paymentMethod,
             "paid",
           ],
           (tx, walkinResult) => {
@@ -422,11 +434,9 @@ const increaseQuantity = (id: number, configId: number): void => {
       });
 
       // Print receipt
-      setMobileNumber("");
-      await printReceipt(orderItems, totalAmount);
-
+  await printReceipt(orderItems, totalAmount, paymentMethod);
+setPaymentMethod("")
       // Reset form
-      // setMobileNumber('');
       setFoodItems((prevItems) =>
         prevItems.map((item) => ({ ...item, quantity: 0 }))
       );
@@ -442,7 +452,11 @@ const increaseQuantity = (id: number, configId: number): void => {
   };
 
   // Print receipt (unchanged)
-  const printReceipt = async (orderItems: FoodItem[], totalAmount: number) => {
+  const printReceipt = async (
+    orderItems: FoodItem[],
+    totalAmount: number,
+    paymentMethodParam: string
+  ) => {
     const canteenName =
       (await AsyncStorage.getItem("canteenName")) || "MO(MB) Canteen";
     const currentDateTime = new Date().toLocaleString("en-IN", {
@@ -455,7 +469,7 @@ const increaseQuantity = (id: number, configId: number): void => {
       hour12: true,
     });
 
-    const printContent = `
+  const printContent = `
 <html>
   <head>
     <style>
@@ -528,6 +542,7 @@ const increaseQuantity = (id: number, configId: number): void => {
     <div class="info">
       <p><strong>Phone Number:</strong> ${mobileNumber}</p>
       <p><strong>Order ID:</strong> WI${Math.floor(Math.random() * 10000)}</p>
+      <p><strong>Payment Method:</strong> ${paymentMethodParam}</p>
     </div>
 
     <div class="section">
@@ -726,8 +741,7 @@ const increaseQuantity = (id: number, configId: number): void => {
       {foodItems.length === 0 ? (
         renderEmptyState()
       ) : (
-        <FlatList
-          data={foodItems}
+  <FlatList
           keyExtractor={(item) => `${item.id}-${item.menuConfigurationId}`}
           renderItem={({ item, index }) => {
             // === SORTED LOGIC: We assume foodItems is sorted by menuConfigurationId 1,2,3 ===
@@ -795,6 +809,48 @@ const increaseQuantity = (id: number, configId: number): void => {
                 <Text style={styles.summaryValue}>
                   ₹{totalAmount.toFixed(2)}
                 </Text>
+              </View>
+            </View>
+
+            {/* Payment method selector - required before printing */}
+            <View style={styles.paymentContainer}>
+              <Text style={styles.paymentLabel}>Select Payment</Text>
+              <View style={styles.paymentOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentOption,
+                    paymentMethod === "Cash" && styles.paymentOptionSelected,
+                  ]}
+                  onPress={() => setPaymentMethod("Cash")}
+                >
+                  <Text
+                    style={
+                      paymentMethod === "Cash"
+                        ? styles.paymentOptionTextSelected
+                        : styles.paymentOptionText
+                    }
+                  >
+                    Cash
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.paymentOption,
+                    paymentMethod === "WalkinQrPay" && styles.paymentOptionSelected,
+                  ]}
+                  onPress={() => setPaymentMethod("WalkinQrPay")}
+                >
+                  <Text
+                    style={
+                      paymentMethod === "WalkinQrPay"
+                        ? styles.paymentOptionTextSelected
+                        : styles.paymentOptionText
+                    }
+                  >
+                    QrPay
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -1131,6 +1187,37 @@ const styles = StyleSheet.create({
   printButtonText: {
     color: "#010080",
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  paymentContainer: {
+    marginBottom: 12,
+  },
+  paymentLabel: {
+    color: "#fff",
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  paymentOptions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  paymentOption: {
+    flex: 1,
+    paddingVertical: 10,
+    marginRight: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+  },
+  paymentOptionSelected: {
+    backgroundColor: "#fff",
+  },
+  paymentOptionText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  paymentOptionTextSelected: {
+    color: "#010080",
     fontWeight: "bold",
   },
 });

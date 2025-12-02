@@ -576,6 +576,7 @@ const AdminDashboard: React.FC = () => {
         { method: "GET", headers: { Authorization: token || "" } }
       );
       const data = await response.json();
+      // console.log(data, "fetched data");
       if (!data || !Array.isArray(data.data)) {
         throw new Error("Invalid data format: Expected an array of orders");
       }
@@ -932,7 +933,8 @@ const handleWalkinSync = async () => {
                     `🚀 Sending Batch ${i + 1}/${batches.length}:`,
                     JSON.stringify(batch, null, 2)
                   );
-
+// console.log("Batch data:", batch);
+// return
                   try {
                     const response = await axios.post(
                       "https://server.mocanteen.in/api/order/createWalkinOrders",
