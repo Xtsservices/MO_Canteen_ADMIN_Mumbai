@@ -155,7 +155,7 @@ const Walkins: React.FC = () => {
       setLoading(true);
 
       const response = await fetch(
-        "https://server.mocanteen.in/api/adminDasboard/getTotalMenusWithTimeLimit?canteenId=1"
+        "https://server.mocanteen.in/api/adminDasboard/getTotalMenus?canteenId=1"
       );
       const result = await response.json();
 
